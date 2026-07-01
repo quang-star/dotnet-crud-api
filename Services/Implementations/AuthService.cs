@@ -23,14 +23,14 @@ public class AuthService : IAuthService
 
         if (user == null)
         {
-            return null;
+            throw new Exception("User not found.");
         }
 
         string hashPassword = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 
         if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.Password))
         {
-            return null;
+            throw new Exception("Invalid password.");
         }
 
         return _jwtService.GenerateToken(user);
