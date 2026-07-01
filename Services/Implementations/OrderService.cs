@@ -4,22 +4,28 @@ using DTOs.User;
 using DTOs.OrderDetail;
 using Repositories.Interfaces;
 using Services.Interfaces;
+using FluentValidation;
 namespace Services.Implementations;
 
 public class OrderService : IOrderService
 {
     private readonly IOrderRepository _orderRepository;
-    private readonly IProductRepository _productRepository;
-
-    public OrderService(IOrderRepository orderRepository, IProductRepository productRepository)
+    private readonly IValidator<CreateOrderDto> _createOrderValidator;
+    private readonly IValidator<UpdateOrderDto> _updateOrderValidator;
+    public OrderService(IOrderRepository orderRepository, IValidator<CreateOrderDto> createOrderValidator, IValidator<UpdateOrderDto> updateOrderValidator)
     {
         _orderRepository = orderRepository;
-        _productRepository = productRepository;
+        _createOrderValidator = createOrderValidator;
+        _updateOrderValidator = updateOrderValidator;
     }
 
     public async Task<List<OrderDto>> GetAllOrdersAsync()
     {
         var orders = await _orderRepository.GetAllAsync();
+        if (orders == null || !orders.Any())
+        {
+            throw new Exception("No orders found.");
+        }
         return orders.Select(order => new OrderDto
         {
             Id = order.Id,
@@ -42,7 +48,10 @@ public class OrderService : IOrderService
     public async Task<OrderDto?> GetOrderByIdAsync(int id)
     {
         var order = await _orderRepository.GetByIdAsync(id);
-        if (order == null) return null;
+        if (order == null)
+        {
+            throw new Exception($"Order with id {id} not found.");
+        }
 
         return new OrderDto
         {
@@ -63,12 +72,18 @@ public class OrderService : IOrderService
         };
     }
 
-    public async Task<CreateOrderDto> CreateOrderAsync(CreateOrderDto orderDto)
+    public async Task CreateOrderAsync(CreateOrderDto orderDto)
     {
+
+        var validationResult = await _createOrderValidator.ValidateAsync(orderDto);
+        if (!validationResult.IsValid)
+        {
+            throw new ValidationException(validationResult.Errors);
+        }
         var order = new Order
         {
             UserId = orderDto.UserId,
-           // CreatedAt = DateTime.Now,
+            // CreatedAt = DateTime.Now,
             OrderDetails = orderDto.OrderDetails.Select(orderDetail => new OrderDetail
             {
                 ProductId = orderDetail.ProductId,
@@ -76,23 +91,21 @@ public class OrderService : IOrderService
             }).ToList()
         };
 
-        var createdOrder = await _orderRepository.AddAsync(order);
+        await _orderRepository.AddAsync(order);
 
-        return new CreateOrderDto
-        {
-            UserId = createdOrder.UserId,
-            OrderDetails = createdOrder.OrderDetails.Select(orderDetail => new CreateOrderDetailDto
-            {
-                ProductId = orderDetail.ProductId,
-                Quantity = orderDetail.Quantity
-            }).ToList()
-        };
     }
 
     public async Task UpdateOrderAsync(int id, UpdateOrderDto orderDto)
     {
+        var validationResult = await _updateOrderValidator.ValidateAsync(orderDto);
+        if (!validationResult.IsValid)
+        {
+            throw new ValidationException(validationResult.Errors);
+        }
+
         var order = await _orderRepository.GetByIdAsync(id);
-        if(order == null) {
+        if (order == null)
+        {
             throw new Exception($"Order with id {id} not found.");
         }
 
@@ -107,12 +120,13 @@ public class OrderService : IOrderService
 
     }
 
-   
+
 
     public async Task DeleteOrderAsync(OrderDto orderDto)
     {
         var order = await _orderRepository.GetByIdAsync(orderDto.Id);
-        if(order == null) {
+        if (order == null)
+        {
             throw new Exception($"Order with id {orderDto.Id} not found.");
         }
 

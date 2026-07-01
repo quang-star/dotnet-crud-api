@@ -1,10 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Services.Interfaces;
 using DTOs.Order;
-
+using Microsoft.AspNetCore.Authorization;
 namespace Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/[controller]")]
 public class OrderController : ControllerBase
 {
@@ -29,18 +30,14 @@ public class OrderController : ControllerBase
         {
             return NotFound();
         }
-        return Ok(order);   
+        return Ok(order);
     }
 
     [HttpPost]
-    public async Task<ActionResult<CreateOrderDto?>> CreateOrder(CreateOrderDto orderDto)
+    public async Task<ActionResult> CreateOrder(CreateOrderDto orderDto)
     {
-        var createdOrder = await _orderService.CreateOrderAsync(orderDto);
-        if (createdOrder == null)
-        {
-            return BadRequest();
-        }       
-        return Ok(createdOrder);
+        await _orderService.CreateOrderAsync(orderDto);
+        return Ok();
     }
 
     [HttpPut("{id}")]
@@ -59,9 +56,9 @@ public class OrderController : ControllerBase
     {
         var order = await _orderService.GetOrderByIdAsync(id);
         if (order == null)
-        {       
+        {
             return NotFound();
-        }   
+        }
         await _orderService.DeleteOrderAsync(order);
         return NoContent();
     }
