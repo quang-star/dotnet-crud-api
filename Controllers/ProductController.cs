@@ -1,10 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Services.Interfaces;
 using DTOs.Product;
-
+using Microsoft.AspNetCore.Authorization;
 namespace Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/[controller]")]
 public class ProductController : ControllerBase
 {
@@ -25,48 +26,30 @@ public class ProductController : ControllerBase
     public async Task<ActionResult<ProductDto?>> GetProductById(int id)
     {
         var product = await _productService.GetProductByIdAsync(id);
-        if (product == null)
-        {
-            return NotFound();
-        }
         return Ok(product);
     }
 
     [HttpPost]
     public async Task<ActionResult<CreateProductDto?>> CreateProduct(CreateProductDto productDto)
     {
-        var createdProduct = await _productService.CreateProductAsync(productDto);
-        if (createdProduct == null)
-        {
-            return BadRequest();
-        }
-        return Ok(createdProduct);
-    }               
+        await _productService.CreateProductAsync(productDto);
+        return Ok();
+
+    }
 
     [HttpPut("{id}")]
     public async Task<ActionResult> UpdateProduct(int id, UpdateProductDto productDto)
     {
-        var product = await _productService.GetProductByIdAsync(id);
-        if (product == null)
-        {
-            return NotFound();
-        }
 
         await _productService.UpdateProductAsync(id, productDto);
         return NoContent();
+
     }
 
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteProduct(int id)
     {
-        var product = await _productService.GetProductByIdAsync(id);
-        if (product == null)
-        {
-            return NotFound();
-        }
-
         await _productService.DeleteProductAsync(id);
         return NoContent();
     }
-
 }

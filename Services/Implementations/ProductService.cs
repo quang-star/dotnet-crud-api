@@ -2,16 +2,21 @@ using DTOs.Product;
 using Models;
 using Repositories.Interfaces;
 using Services.Interfaces;
-
+using FluentValidation;
+using Validators.Product;
 namespace Services.Implementations;
 
 public class ProductService : IProductService
 {
     private readonly IProductRepository _productRepository;
+    private readonly IValidator<CreateProductDto> _createProductValidator;
+    private readonly IValidator<UpdateProductDto> _updateProductValidator;
 
-    public ProductService(IProductRepository productRepository)
+    public ProductService(IProductRepository productRepository, IValidator<CreateProductDto> createProductValidator, IValidator<UpdateProductDto> updateProductValidator)
     {
         _productRepository = productRepository;
+        _createProductValidator = createProductValidator;
+        _updateProductValidator = updateProductValidator;
     }
 
     public async Task<List<ProductDto>> GetAllProductAsync()
@@ -32,7 +37,7 @@ public class ProductService : IProductService
         var product = await _productRepository.GetByIdAsync(id);
         if (product == null)
         {
-            return null;
+            throw new Exception("Product not found");
         }
 
         return new ProductDto
@@ -44,8 +49,15 @@ public class ProductService : IProductService
         };
     }
 
-    public async Task<CreateProductDto?> CreateProductAsync(CreateProductDto productDto)
+    public async Task CreateProductAsync(CreateProductDto productDto)
     {
+        var validationResult = await _createProductValidator.ValidateAsync(productDto);
+
+        if (!validationResult.IsValid)
+        {
+            throw new ValidationException(validationResult.Errors);
+        }
+
         var product = new Product
         {
             Name = productDto.Name,
@@ -54,14 +66,7 @@ public class ProductService : IProductService
             CreatedAt = DateTime.Now
         };
 
-        var createdProduct = await _productRepository.AddAsync(product);
-
-        return new CreateProductDto
-        {
-            Name = createdProduct.Name,
-            Price = createdProduct.Price,
-            Description = createdProduct.Description
-        };
+        await _productRepository.AddAsync(product);
     }
 
     public async Task UpdateProductAsync(int id, UpdateProductDto productDto)
@@ -70,6 +75,12 @@ public class ProductService : IProductService
         if (product == null)
         {
             throw new Exception("Product not found");
+        }
+
+        var validationResult = await _updateProductValidator.ValidateAsync(productDto);
+        if (!validationResult.IsValid)
+        {
+            throw new ValidationException(validationResult.Errors);
         }
 
         if (!string.IsNullOrEmpty(productDto.Name))
