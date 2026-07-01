@@ -5,13 +5,10 @@ namespace DTOs.User;
 public class CreateUserDto
 {
     
-    [StringLength(50, MinimumLength = 3)]
-    public required string Name {get; set; }
+    public string Name {get; set; } = string.Empty;
 
-    [EmailAddress]
-    public required string Email { get; set; }
+    public string Email { get; set; } = String.Empty;
 
-    [MinLength(6)]
-    public required string Password { get; set; }
+    public string Password { get; set; }  = string.Empty;
 }
 
